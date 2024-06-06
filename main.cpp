@@ -127,17 +127,43 @@ int main() {
   }
   if (choice == "i") {
     torch::load(net, paramsfname);
-    std::cout << "Ingrese los datos requeridos\n";
 
-    for (int i=0; i<nfeatures; i++) {
-      std::cout << flabels[i] << ": ";
+    do {
+      std::cout << "Entrada de datos individuales o en linea separados por coma? (1/2): ";
+      std::cin >> choice;
+      std::cout << "\n";
+    } while (choice != "1" && choice != "2");
+
+    if (choice == "1") {
+      std::cout << "Ingrese los datos requeridos\n";
+
+      for (int i=0; i<nfeatures; i++) {
+        std::cout << flabels[i] << ": ";
+        std::cin >> tmp;
+        sfeatures[i] = std::stof(tmp);
+        std::cout << "Dato recibido: " << sfeatures[i] << "\n\n";
+      }
+    }
+    if (choice == "2") {
+      std::cout << "Ingrese los datos requeridos separados por comas sin espacios\n";
       std::cin >> tmp;
-      sfeatures[i] = std::stof(tmp);
-      std::cout << "Dato recibido: " << sfeatures[i] << "\n\n";
+
+      std::string tmp2 = "";
+      int c1=0;
+      for (int i=0; i<tmp.length(); i++) {
+        if (tmp[i] == ',') {
+          sfeatures[c1] = std::stof(tmp2);
+          c1++;
+          tmp2 = "";
+        }
+        else {
+          tmp2 = tmp2 + tmp[i];
+        }
+      }
     }
 
     torch::Tensor tfeatures = torch::from_blob(sfeatures.data(), {1, static_cast<long>(sfeatures.size())});
     torch::Tensor prediction = net -> forward(tfeatures);
-    std::cout << "Prediction: " << prediction << std::endl; 
+    std::cout << "Prediction: " << prediction[0][0].item<float>() << std::endl; 
   }
 }
