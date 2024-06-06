@@ -1,0 +1,19 @@
+{
+    "configurations": [
+        {
+            "name": "Linux",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/home/juanpa/Projects/cpp-projects/libraries/libtorch/libtorch-shared-with-deps-2.3.1+cu121/libtorch",
+                "/home/juanpa/Projects/cpp-projects/libraries/libtorch/libtorch-shared-with-deps-2.3.1+cu121/libtorch/include/torch/csrc/api/include",
+                "/home/juanpa/Projects/cpp-projects/libraries/libtorch/libtorch-shared-with-deps-2.3.1+cu121/libtorch/include"
+            ],
+            "defines": [],
+            "cStandard": "c17",
+            "cppStandard": "c++23",
+            "intelliSenseMode": "${default}",
+            "compilerPath": "/usr/bin/gcc"
+        }
+    ],
+    "version": 4
+}
