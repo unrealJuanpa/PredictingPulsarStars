@@ -5,6 +5,9 @@
 #include <vector>
 #include <string>
 
+#define nfeatures 8
+#define paramsfname "params.pt"
+
 // Arch
 /*
   8 inputs
@@ -70,30 +73,71 @@ struct CSVDataset : torch::data::datasets::Dataset<CSVDataset> {
 
 
 int main() {
-  auto dataset = CSVDataset("/home/juanpa/Projects/cpp-projects/PredictingPulsarStars/pulsar_stars_dataset.csv").map(torch::data::transforms::Stack<>());
-  auto data_loader = torch::data::make_data_loader(std::move(dataset), /*batch_size=*/8192);
+  std::string choice;
+  std::string flabels[nfeatures] = {
+    "Mean of the integrated profile",
+    "Standard deviation of the integrated profile",
+    "Excess kurtosis of the integrated profile",
+    "Skewness of the integrated profile",
+    "Mean of the DM-SNR curve",
+    "Standard deviation of the DM-SNR curve",
+    "Excess kurtosis of the DM-SNR curve",
+    "Skewness of the DM-SNR curve"
+  };
+  std::vector<float> sfeatures(nfeatures, 0.0f);
+  std::string tmp;
+
   auto net = std::make_shared<Net>();
 
-  torch::optim::Adam optimizer(net -> parameters(), /*lr=*/0.003);
+  do {
+    std::cout << "Entrenamiento o inferencia? (e/i): ";
+    std::cin >> choice;
+    std::cout << "\n";
+  } while (choice != "e" && choice != "i");
 
-  for (size_t epoch = 1; epoch <= 100; ++epoch) {
-    size_t batch_index = 0;
+  if (choice == "e") {
+    auto dataset = CSVDataset("/home/juanpa/Projects/cpp-projects/PredictingPulsarStars/pulsar_stars_dataset.csv").map(torch::data::transforms::Stack<>());
+    auto data_loader = torch::data::make_data_loader(std::move(dataset), /*batch_size=*/8192);
+    
 
-    for (auto& batch : *data_loader) {
-      optimizer.zero_grad();
+    torch::optim::Adam optimizer(net -> parameters(), /*lr=*/0.003);
 
-      torch::Tensor prediction = net -> forward(batch.data); // forward pass
-      auto target = batch.target.view({-1, 1});
-      torch::Tensor loss = torch::nn::functional::binary_cross_entropy(prediction, target); // calc loss
-      
-      loss.backward(); // compute gradients
-      optimizer.step(); // update model parameters
+    for (size_t epoch = 1; epoch <= 100; ++epoch) {
+      size_t batch_index = 0;
 
-      batch_index++;
+      for (auto& batch : *data_loader) {
+        optimizer.zero_grad();
 
-      if (1) { // ++batch_index % 100 == 0
-        std::cout << "Epoch: " << epoch << " | Batch: " << batch_index << " | Loss: " << loss.item<float>() << std::endl;
+        torch::Tensor prediction = net -> forward(batch.data); // forward pass
+        auto target = batch.target.view({-1, 1});
+        torch::Tensor loss = torch::nn::functional::binary_cross_entropy(prediction, target); // calc loss
+        
+        loss.backward(); // compute gradients
+        optimizer.step(); // update model parameters
+
+        batch_index++;
+
+        if (1) { // ++batch_index % 100 == 0
+          std::cout << "Epoch: " << epoch << " | Batch: " << batch_index << " | Loss: " << loss.item<float>() << std::endl;
+        }
       }
     }
+
+    torch::save(net, paramsfname);
+  }
+  if (choice == "i") {
+    torch::load(net, paramsfname);
+    std::cout << "Ingrese los datos requeridos\n";
+
+    for (int i=0; i<nfeatures; i++) {
+      std::cout << flabels[i] << ": ";
+      std::cin >> tmp;
+      sfeatures[i] = std::stof(tmp);
+      std::cout << "Dato recibido: " << sfeatures[i] << "\n\n";
+    }
+
+    torch::Tensor tfeatures = torch::from_blob(sfeatures.data(), {1, static_cast<long>(sfeatures.size())});
+    torch::Tensor prediction = net -> forward(tfeatures);
+    std::cout << "Prediction: " << prediction << std::endl; 
   }
 }
