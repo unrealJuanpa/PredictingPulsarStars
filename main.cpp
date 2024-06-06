@@ -18,14 +18,14 @@
 
 struct Net : torch::nn::Module {
   Net() {
-    fc1 = register_module("fc1", torch::nn::Linear(8, 16));
-    fc2 = register_module("fc2", torch::nn::Linear(16, 32));
-    fc3 = register_module("fc3", torch::nn::Linear(32, 1));
+    fc1 = register_module("fc1", torch::nn::Linear(8, 64));
+    fc2 = register_module("fc2", torch::nn::Linear(64, 96));
+    fc3 = register_module("fc3", torch::nn::Linear(96, 1));
   }
 
   torch::Tensor forward(torch::Tensor x) {
-    x = fc1 -> forward(x); // torch::tanh
-    x = fc2 -> forward(x);
+    x = torch::leaky_relu(fc1 -> forward(x));
+    x = torch::leaky_relu(fc2 -> forward(x));
     x = torch::sigmoid(fc3 -> forward(x));
     return x;
   }
@@ -71,10 +71,10 @@ struct CSVDataset : torch::data::datasets::Dataset<CSVDataset> {
 
 int main() {
   auto dataset = CSVDataset("/home/juanpa/Projects/cpp-projects/PredictingPulsarStars/pulsar_stars_dataset.csv").map(torch::data::transforms::Stack<>());
-  auto data_loader = torch::data::make_data_loader(std::move(dataset), /*batch_size=*/64);
+  auto data_loader = torch::data::make_data_loader(std::move(dataset), /*batch_size=*/8192);
   auto net = std::make_shared<Net>();
 
-  torch::optim::Adam optimizer(net -> parameters(), /*lr=*/0.001);
+  torch::optim::Adam optimizer(net -> parameters(), /*lr=*/0.003);
 
   for (size_t epoch = 1; epoch <= 100; ++epoch) {
     size_t batch_index = 0;
@@ -83,12 +83,15 @@ int main() {
       optimizer.zero_grad();
 
       torch::Tensor prediction = net -> forward(batch.data); // forward pass
-      torch::Tensor loss = torch::l1_loss(prediction, batch.target); // calc loss
+      auto target = batch.target.view({-1, 1});
+      torch::Tensor loss = torch::nn::functional::binary_cross_entropy(prediction, target); // calc loss
       
       loss.backward(); // compute gradients
       optimizer.step(); // update model parameters
 
-      if (++batch_index % 100 == 0) {
+      batch_index++;
+
+      if (1) { // ++batch_index % 100 == 0
         std::cout << "Epoch: " << epoch << " | Batch: " << batch_index << " | Loss: " << loss.item<float>() << std::endl;
       }
     }
